@@ -88,6 +88,10 @@ def parse_args():
 
 def generate_vcf_classes(vcfs):
     parsed_vcf_bodies = list(map(lambda x: allel.read_vcf(x, fields="*"), vcfs))
+    parsed_vcf_bodies = list(filter(None, parsed_vcf_bodies))
+    deque(map(lambda x: x.update(samples=numpy.char.lower(x['samples'].tolist())), parsed_vcf_bodies))
+    print(len(parsed_vcf_bodies))
+    deque(map(lambda x,y: x.update(FILE=y), parsed_vcf_bodies, vcfs))
     add_headers = lambda x,y: x.update(header=allel.read_vcf_headers(y))
     deque(map(
             add_headers, 
@@ -110,16 +114,17 @@ def call_consensus_variants(vcf_classes):
                 'REF': vcf['variants/REF'],
                 'ALT': vcf['variants/ALT'].tolist(),
                 'QUAL': vcf['variants/QUAL'],
-                'FILTER': vcf['variants/FILTER_PASS']
+                'FILTER': vcf['variants/FILTER_PASS'],
+                'FILE': vcf['FILE']
             }).explode('ALT')
             vcf_df = vcf_df.replace('', numpy.nan)
             vcf_df = vcf_df.dropna(subset=['ALT'])
-            cd_dp = pandas.DataFrame(vcf['calldata/DP'], 
+            cd_dp = pandas.DataFrame(vcf.get('calldata/DP', numpy.nan), 
                 columns=vcf['samples'])
             cd_dp = cd_dp.add_prefix('DP_')
             vcf_df = vcf_df.join(cd_dp)
             del cd_dp
-            cd_gt = pandas.DataFrame(vcf['calldata/GT'].tolist(),
+            cd_gt = pandas.DataFrame(vcf.get('calldata/GT', numpy.ndarray((1,2))).tolist(),
                 columns=vcf['samples'])
             cd_gt = cd_gt.add_prefix('GT_')
             vcf_df = vcf_df.join(cd_gt)
@@ -128,15 +133,19 @@ def call_consensus_variants(vcf_classes):
 
             vcf_df['variant_id'] = vcf_df.apply(lambda row: f'{row.CHROM}:{row.POS}:{row.REF}:{row.ALT}', 
             axis=1, result_type='reduce')
-            
             yield vcf_df
     
     merged_variants = pandas.concat(generate_dataframe(vcf_classes))
 
     merged_variants = merged_variants[merged_variants.FILTER == True]
 
-    merged_variants['QUAL'] = merged_variants.groupby('variant_id')['QUAL'].transform(lambda x: x.bfill())
+    merged_variants['QUAL'] = merged_variants.groupby('variant_id')['QUAL'].transform(lambda x: x.fillna(numpy.mean(x)))
+    
+    for row in merged_variants.itertuples():
+        print(row)
+
     merged_variants = merged_variants.groupby('variant_id').filter(lambda x: len(x) > 1)
+
     merged_variants['COUNT'] = numpy.arange(len(merged_variants))
     return merged_variants
 
