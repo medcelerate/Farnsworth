@@ -76,7 +76,7 @@ def gen_art(key):
 
 def parse_args():
     # Add aditional input paths here
-    parser = argparse.ArgumentParser(description="Do consensus calls on VCF files from strelka, lancets, and mutect2")
+    parser = argparse.ArgumentParser(description="Do consensus calls on multiple VCFs")
     parser.add_argument("vcf", metavar='VCF', type=str, nargs='+', help="Pass in multiple VCF Files")
     parser.add_argument('--gen_region', required=False, action='store_true', help="If passed will write a regions.txt file for use with bam readcount.")
     parser.add_argument('--output', action='store', required=True, help="VCF file to write output to.")
@@ -87,10 +87,10 @@ def parse_args():
     return parser.parse_args()
 
 def generate_vcf_classes(vcfs):
+    print("Parsing VCFs")
     parsed_vcf_bodies = list(map(lambda x: allel.read_vcf(x, fields="*"), vcfs))
     parsed_vcf_bodies = list(filter(None, parsed_vcf_bodies))
     deque(map(lambda x: x.update(samples=numpy.char.lower(x['samples'].tolist())), parsed_vcf_bodies))
-    print(len(parsed_vcf_bodies))
     deque(map(lambda x,y: x.update(FILE=y), parsed_vcf_bodies, vcfs))
     add_headers = lambda x,y: x.update(header=allel.read_vcf_headers(y))
     deque(map(
@@ -102,6 +102,7 @@ def generate_vcf_classes(vcfs):
     return parsed_vcf_bodies
 
 def call_consensus_variants(vcf_classes):
+    print("Calling Consensus Variants")
 
     def generate_dataframe(vcf_classes):
         for vcf in vcf_classes:
@@ -131,22 +132,31 @@ def call_consensus_variants(vcf_classes):
             del cd_gt
 
 
-            vcf_df['variant_id'] = vcf_df.apply(lambda row: f'{row.CHROM}:{row.POS}:{row.REF}:{row.ALT}', 
+            vcf_df['variantid'] = vcf_df.apply(lambda row: f'{row.CHROM}:{row.POS}:{row.REF}:{row.ALT}', 
             axis=1, result_type='reduce')
             yield vcf_df
     
     merged_variants = pandas.concat(generate_dataframe(vcf_classes))
 
-    merged_variants = merged_variants[merged_variants.FILTER == True]
+    #merged_variants = merged_variants[merged_variants.FILTER == True]
 
-    merged_variants['QUAL'] = merged_variants.groupby('variant_id')['QUAL'].transform(lambda x: x.fillna(numpy.mean(x)))
+    merged_variants['QUAL'] = merged_variants.groupby('variantid')['QUAL'].transform(lambda x: x.fillna(numpy.mean(x)))
+
+    for col in merged_variants.columns:
+        if "_" in col:
+            if "GT" in col:
+                # Need to fix this
+                merged_variants[col] =  merged_variants.groupby('variantid')[col].transform(lambda x: x.bfill())
+                continue
+            merged_variants[col] =  merged_variants.groupby('variantid')[col].transform(lambda x: x.fillna(numpy.mean(x)))
+        else:
+            continue
     
-    for row in merged_variants.itertuples():
-        print(row)
-
-    merged_variants = merged_variants.groupby('variant_id').filter(lambda x: len(x) > 1)
+    
+    merged_variants = merged_variants.groupby('variantid').filter(lambda x: len(x) > 1)
 
     merged_variants['COUNT'] = numpy.arange(len(merged_variants))
+
     return merged_variants
 
 def create_format_fields(consensus_variants):
@@ -156,6 +166,7 @@ def create_format_fields(consensus_variants):
     return format_fields
 
 def generate_headers(vcf_classes, consensus_variants):
+    print("Generating Headers")
 
     def create_contigs(vcf):
         contigs = {}
@@ -182,7 +193,7 @@ def generate_headers(vcf_classes, consensus_variants):
         f"##fileformat=VCFv4.1",
         f"##fileDate={date}",
         f"##source=Farnsworth",
-        "##INFO=<ID=variant_id,Number=1,Type=String,Description="">",
+        "##INFO=<ID=variantid,Number=1,Type=String,Description="">",
         "##FILTER=<ID=PASS,Description="">"
     ]
 
@@ -197,6 +208,8 @@ def generate_headers(vcf_classes, consensus_variants):
 def gen_vcf_writelist(call, format_fields, samples):
 
     def fix_gt(gt):
+        if isinstance(gt, float):
+            return "."
         return "{0}/{1}".format(gt[0], gt[1])
 
     def chunk_list(l):
@@ -211,7 +224,7 @@ def gen_vcf_writelist(call, format_fields, samples):
     record.append(str(call.ALT))
     record.append(str(call.QUAL))
     record.append("PASS")
-    record.append(f"variant_id={call.variant_id}")
+    record.append(f"variantid={call.variantid}")
     record.append(":".join(format_fields))
     sample_cols = list(product(samples, format_fields))
     for field in chunk_list(sample_cols):
@@ -228,6 +241,7 @@ def gen_vcf_writelist(call, format_fields, samples):
     
 
 def write_vcf(consensus_variants, header, samples, outfile):
+    print("Writing VCF")
     format_fields = create_format_fields(consensus_variants)
     df_length = len(consensus_variants) - 1
 
@@ -246,6 +260,7 @@ def write_vcf(consensus_variants, header, samples, outfile):
                 fp.write("\t".join(record))
 
 def gen_regions(consensus_variants):
+    print("Generating Regions")
     df_length = len(consensus_variants) - 1
     with open('./regions.txt', 'w') as fp:
         for row in consensus_variants.itertuples():
@@ -260,6 +275,7 @@ def gen_regions(consensus_variants):
 
 
 def check_files_for_dups(vcfs):
+    print("Check For Duplicate VCFs")
     hashes = set()
     for f in vcfs:
         with open(f, "rb") as fp:
@@ -273,6 +289,7 @@ def check_files_for_dups(vcfs):
         print("Uh-oh, you tried to trick us :(")
         print("Two of the same VCF files were passed in.")
         sys.exit(1)
+
 def main():
     args = parse_args()
     check_files_for_dups(args.vcf)
