@@ -1,0 +1,278 @@
+#!/usr/bin/env python
+import allel
+import argparse
+import datetime
+import hashlib
+import numpy
+import pandas
+import random
+import re
+import string
+import sys
+from art import *
+from collections import deque
+from itertools import product
+
+def gen_art(key):
+    if key == "f":
+        art = """
+{0}
+
+              ,.,_,.
+           ,.''     \\
+          '          '        
+        /'           |
+      /_-            |    
+    .'__      _-_    :
+   /__        _-_    :
+  ,_,._     ,_,._~   |___
+.'-_ '.'.-.'-_ '.'._-^_  '.
+|  -_ |.| |  -_ | | / |
+ ',_,' /  _',_,'_'  /|/
+  .  .|    ',. ._-^  |'
+   ' '.   .'  '.    '/|
+ ,'    '''    __'.  \/ -_
+'_=-..--..--'^  '', : \. '.
+     ',    .  ,   ,' \/ |  |-_
+     / ',.. '. '. ,../  |  |  '-_
+   ,'  . \\'.:.''''    .''. '.    \.
+ ,'    | |\       ,../   |  |      ',
+ |     ' ''.,.''''       ', ',       |
+        """.format(text2art("FARNSWORTH"))
+    if key == "b":
+        art = """
+                                                                
+                              ...::..                           
+                         .+?!!!!!!!!!!!!.                       
+                      .!!!!!!!!!!!!!!!!!!!!:                    
+                   .(!!!!!!!!!!!!!!!!!!!!!!!!!....              
+                .+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!X~~~">:         
+               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!X!~~~~~~~~!       
+              ( '%    ``!!!!!   s      'X!!!!!!!~~~~~~~~~!      
+              !         !!!!!           .!!!!!!!>~~~~~~~~!      
+           ++++++::::u!!!!!!Uk.........x!!!!!!!!!~~~~~~~~!      
+          ':~~~~~~(XH?!!!!!!!~~~~~~~~~~~~?!X!!!!~~~~~~~~~!      
+           4~~~~(M!!!!!!!!!!!~~~~~~~~~~~:!!@X!!Sn+X:~~~~(       
+             ~:(!!!!!!!!!!!!!!:~~~~~~~:!!X!!!!!!!!!!!~~(        
+               'X!!!!!!!!!!X!!!!!??#@@!?!!!!!!!!X7!!!~:         
+              :~~~?*!!!*!"~~~~%X!!!!!!!!!!!!!!!!!!!!!`          
+            :~~~~~~~~~~~~~~~~~~~~"%X!!!!!!!!!!!!!!!!            
+           !~~~~~~~~~~~~~~~~~~~~~~~~?X!!!!!!!!!X!~              
+         :~~:+~~(+~~:~%:~~~~~~~~~~~~~~~X!!!!!!!                 
+        ':~  -~  "`   !!$$i:?!!:~~!?!+XX!!!!!!X                 
+                      X!?T!!!!!!!!!!!!!!!!!!!!8$k               
+           .     .o$$$$$&!!!!!!!!!!!!!!!!!!!!f'$$$$c  z$bL      
+         d$$$$W$$$$$$$$$$F!!!!!!!!!!!!!!!!!X` '$$$$$$$$$$$k     
+         $$$$$$$$$$$$$$$$L "X!!!!!!!!!!X!"    '$$$$$$$$$$$$     
+        '$$$$$$$$$$$$$$$$B      ```  z$$b.     $$$$$$$$$$$$     
+         $$$$$$$$$$$$$$$$$k        @$$$$$E'\  '$$$$$$$$$$$$$>   
+        $$$$$$$$$$$$$$$$$$$L     / $$$$$$f  '(8$$$$$$$$$$$$$$   
+       @$$$$$$$$$$$$$$$$$$$$L  :    R$$$$    '$$$$$$$$$$$$$$$$  
+      9$$$$$$$$$$$$$$$$$$$$$$k/     d$$$$k   9$$$$$$$$$$$$$$$$B 
+     X$$$$$$$$$$$$$$$$$$$$$$$$$L    $$$$$$k '$$$$$$$$$$$$$$$$$$k
+
+        """
+    return art
+
+def parse_args():
+    # Add aditional input paths here
+    parser = argparse.ArgumentParser(description="Do consensus calls on VCF files from strelka, lancets, and mutect2")
+    parser.add_argument("vcf", metavar='VCF', type=str, nargs='+', help="Pass in multiple VCF Files")
+    parser.add_argument('--gen_region', required=False, action='store_true', help="If passed will write a regions.txt file for use with bam readcount.")
+    parser.add_argument('--output', action='store', required=True, help="VCF file to write output to.")
+    if len(sys.argv) == 1:
+        print(gen_art("f"))
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    return parser.parse_args()
+
+def generate_vcf_classes(vcfs):
+    parsed_vcf_bodies = list(map(lambda x: allel.read_vcf(x, fields="*"), vcfs))
+    add_headers = lambda x,y: x.update(header=allel.read_vcf_headers(y))
+    deque(map(
+            add_headers, 
+            parsed_vcf_bodies, 
+            vcfs
+            )
+        )
+    return parsed_vcf_bodies
+
+def call_consensus_variants(vcf_classes):
+
+    def generate_dataframe(vcf_classes):
+        for vcf in vcf_classes:
+            if vcf is None:
+                continue
+            vcf_df = pandas.DataFrame({
+                'CHROM': vcf['variants/CHROM'],
+                'POS': vcf['variants/POS'],
+                'ID': vcf['variants/ID'],
+                'REF': vcf['variants/REF'],
+                'ALT': vcf['variants/ALT'].tolist(),
+                'QUAL': vcf['variants/QUAL'],
+                'FILTER': vcf['variants/FILTER_PASS']
+            }).explode('ALT')
+            vcf_df = vcf_df.replace('', numpy.nan)
+            vcf_df = vcf_df.dropna(subset=['ALT'])
+            cd_dp = pandas.DataFrame(vcf['calldata/DP'], 
+                columns=vcf['samples'])
+            cd_dp = cd_dp.add_prefix('DP_')
+            vcf_df = vcf_df.join(cd_dp)
+            del cd_dp
+            cd_gt = pandas.DataFrame(vcf['calldata/GT'].tolist(),
+                columns=vcf['samples'])
+            cd_gt = cd_gt.add_prefix('GT_')
+            vcf_df = vcf_df.join(cd_gt)
+            del cd_gt
+
+
+            vcf_df['variant_id'] = vcf_df.apply(lambda row: f'{row.CHROM}:{row.POS}:{row.REF}:{row.ALT}', 
+            axis=1, result_type='reduce')
+            
+            yield vcf_df
+    
+    merged_variants = pandas.concat(generate_dataframe(vcf_classes))
+
+    merged_variants = merged_variants[merged_variants.FILTER == True]
+
+    merged_variants['QUAL'] = merged_variants.groupby('variant_id')['QUAL'].transform(lambda x: x.bfill())
+    merged_variants = merged_variants.groupby('variant_id').filter(lambda x: len(x) > 1)
+    merged_variants['COUNT'] = numpy.arange(len(merged_variants))
+    return merged_variants
+
+def create_format_fields(consensus_variants):
+    check_field = lambda x: "GT" in x or "DP" in x
+    format_fields = filter(check_field, list(consensus_variants.columns))
+    format_fields = set(map(lambda x: x.split('_')[0], format_fields))
+    return format_fields
+
+def generate_headers(vcf_classes, consensus_variants):
+
+    def create_contigs(vcf):
+        contigs = {}
+        for line in vcf['header'].headers:
+            if '##contig' not in line:
+                continue
+            line = line.rstrip().split("##contig=")[1]
+            line = line.strip('<').strip('>')
+            line = re.split(r'[,=]', line)
+            contigs.update({
+                line[1]:{"length":line[3]}
+            })
+        vcf['headers/contigs'] = contigs
+
+
+    deque(map(create_contigs, vcf_classes))
+    
+    contigs = {}
+
+    deque(map(lambda x: contigs.update(x['headers/contigs']), vcf_classes))
+
+    date = datetime.datetime.now().strftime("%Y%m%d")
+    top_lines = [
+        f"##fileformat=VCFv4.1",
+        f"##fileDate={date}",
+        f"##source=Farnsworth",
+        "##INFO=<ID=variant_id,Number=1,Type=String,Description="">",
+        "##FILTER=<ID=PASS,Description="">"
+    ]
+
+    contigs = list(map(lambda x: f"##contig=<ID={x},length={contigs[x]['length']}>", contigs))
+
+    formats = create_format_fields(consensus_variants)
+    formats = list(map(lambda x: f"##FILTER=<ID={x},Number=1,Type=String,Description="">", formats))
+
+
+    return top_lines + formats + contigs
+
+def gen_vcf_writelist(call, format_fields, samples):
+
+    def fix_gt(gt):
+        return "{0}/{1}".format(gt[0], gt[1])
+
+    def chunk_list(l):
+        n = int(len(l)/2)
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+    record = []
+    record.append(call.CHROM)
+    record.append(str(call.POS))
+    record.append(str(call.ID))
+    record.append(str(call.REF))
+    record.append(str(call.ALT))
+    record.append(str(call.QUAL))
+    record.append("PASS")
+    record.append(f"variant_id={call.variant_id}")
+    record.append(":".join(format_fields))
+    sample_cols = list(product(samples, format_fields))
+    for field in chunk_list(sample_cols):
+        f = []
+        for group in field:
+            ident = "{0}_{1}".format(group[1], group[0])
+            if group[1] == "GT":
+                attr = fix_gt(getattr(call, ident))
+            else:
+                attr = str(getattr(call, ident))
+            f.append(attr)
+        record.append(":".join(f))
+    return record
+    
+
+def write_vcf(consensus_variants, header, samples, outfile):
+    format_fields = create_format_fields(consensus_variants)
+    df_length = len(consensus_variants) - 1
+
+    with open(outfile, 'w') as fp:
+        for line in header:
+            fp.write("{0}\n".format(line))
+        
+        fp.write("\t".join(["#CHROM","POS","ID", "REF","ALT",
+        "QUAL","FILTER","INFO","FORMAT"] + list(samples)) + "\n")
+        
+        for row in consensus_variants.itertuples():
+            record = gen_vcf_writelist(row, format_fields, samples)
+            if row.COUNT < df_length:
+                fp.write("\t".join(record) + "\n")
+            else:
+                fp.write("\t".join(record))
+
+def gen_regions(consensus_variants):
+    df_length = len(consensus_variants) - 1
+    with open('./regions.txt', 'w') as fp:
+        for row in consensus_variants.itertuples():
+            start = int(row.POS) - 2
+            end = start + len(row.ALT) + 2
+            chrom = row.CHROM
+            if row.COUNT < df_length:
+                chr_line = f'{chrom}\t{start}\t{end}\n'
+            else:
+                chr_line = f'{chrom}\t{start}\t{end}'
+                fp.write(chr_line)
+
+
+def check_files_for_dups(vcfs):
+    hashes = set()
+    for f in vcfs:
+        with open(f, "rb") as fp:
+            file_hash = hashlib.md5()
+            while chunk := fp.read(1024):
+                file_hash.update(chunk)
+            hashes.add(file_hash.hexdigest())
+    if len(hashes) != len(vcfs):
+        
+        print(gen_art("b"))
+        print("Uh-oh, you tried to trick us :(")
+        print("Two of the same VCF files were passed in.")
+        sys.exit(1)
+def main():
+    args = parse_args()
+    check_files_for_dups(args.vcf)
+    parsed_vcfs = generate_vcf_classes(args.vcf)
+    merged_variants = call_consensus_variants(parsed_vcfs)
+    vcf_headers = generate_headers(parsed_vcfs, merged_variants)
+    write_vcf(merged_variants, vcf_headers, parsed_vcfs[0]['samples'], args.output)
+    if args.gen_region != None:
+        gen_regions(merged_variants)
+    
+if __name__ == "__main__":
+    main()
