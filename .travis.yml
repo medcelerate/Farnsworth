@@ -9,5 +9,6 @@ services:
     - docker
 script:
     - docker login -u medcelerate -p $DOCKER_KEY
-    - docker build . -t medcelerate/farnsworth:$TRAVIS_COMMIT
+    - docker build . -t medcelerate/farnsworth:$TRAVIS_COMMIT -t medcelerate/farnsworth:latest
     - docker push medcelerate/farnsworth:$TRAVIS_COMMIT
+    - docker push medcelerate/farnsworth:latest
