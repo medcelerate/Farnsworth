@@ -140,7 +140,7 @@ def call_consensus_variants(vcf_classes):
     
     merged_variants = pandas.concat(generate_dataframe(vcf_classes))
 
-    #merged_variants = merged_variants[merged_variants.FILTER == True]
+    merged_variants = merged_variants[merged_variants.FILTER == True]
 # Transforms are going to be the slowest part of the process
     merged_variants['QUAL'] = merged_variants.groupby('variantid')['QUAL'].transform(lambda x: x.fillna(numpy.mean(x)))
 
@@ -225,7 +225,7 @@ def gen_vcf_writelist(call, format_fields, samples):
     record.append(str(call.ID))
     record.append(str(call.REF))
     record.append(str(call.ALT))
-    print(str(call.QUAL))
+    #print(str(call.QUAL))
     record.append(str(call.QUAL) if str(call.QUAL) != "nan" else ".")
     record.append("PASS")
     record.append(f"variantid={call.variantid}")
