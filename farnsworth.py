@@ -13,6 +13,8 @@ from art import *
 from collections import deque
 from itertools import product
 
+import flamegraph
+
 def gen_art(key):
     if key == "f":
         art = """
@@ -139,7 +141,7 @@ def call_consensus_variants(vcf_classes):
     merged_variants = pandas.concat(generate_dataframe(vcf_classes))
 
     #merged_variants = merged_variants[merged_variants.FILTER == True]
-
+# Transforms are going to be the slowest part of the process
     merged_variants['QUAL'] = merged_variants.groupby('variantid')['QUAL'].transform(lambda x: x.fillna(numpy.mean(x)))
 
     for col in merged_variants.columns:
@@ -157,6 +159,7 @@ def call_consensus_variants(vcf_classes):
 
     merged_variants['COUNT'] = numpy.arange(len(merged_variants))
 
+    merged_variants['QUAL'] = merged_variants['QUAL'].apply(lambda x: "." if x == "nan" else x)
     return merged_variants
 
 def create_format_fields(consensus_variants):
@@ -222,7 +225,8 @@ def gen_vcf_writelist(call, format_fields, samples):
     record.append(str(call.ID))
     record.append(str(call.REF))
     record.append(str(call.ALT))
-    record.append(str(call.QUAL))
+    print(str(call.QUAL))
+    record.append(str(call.QUAL) if str(call.QUAL) != "nan" else ".")
     record.append("PASS")
     record.append(f"variantid={call.variantid}")
     record.append(":".join(format_fields))
@@ -291,6 +295,7 @@ def check_files_for_dups(vcfs):
         sys.exit(1)
 
 def main():
+    #flamegraph.start_profile_thread(fd=open("./perf.log", "w"))
     args = parse_args()
     check_files_for_dups(args.vcf)
     parsed_vcfs = generate_vcf_classes(args.vcf)

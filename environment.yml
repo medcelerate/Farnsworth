@@ -1,0 +1,11 @@
+name: Farnsworth
+dependencies:
+    - python=3.8
+    - pandas=1.0.1
+    - numpy=1.18.1
+    - pip
+    - pip:
+        - scikit-allel==1.2.1
+        - Cython==0.29.15
+        - pyvcf==0.6.8
+        - art==4.5
