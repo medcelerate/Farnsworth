@@ -27,7 +27,7 @@ inputs:
 baseCommand: ["Farnsworth"]
 
 outputs:
-  consenus_vcf:
+  consensus_vcf:
     type: File
     outputBinding:
       glob: $(inputs.Output)
