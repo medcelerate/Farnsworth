@@ -1,1 +1,5 @@
 *.vcf
+test/
+perf.log
+regions.txt
+.vscode/

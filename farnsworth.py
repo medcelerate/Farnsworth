@@ -159,7 +159,7 @@ def call_consensus_variants(vcf_classes):
 
     merged_variants['COUNT'] = numpy.arange(len(merged_variants))
 
-    merged_variants['QUAL'] = merged_variants['QUAL'].apply(lambda x: "." if x == "nan" else x)
+    #merged_variants['QUAL'] = merged_variants['QUAL'].apply(lambda x: "." if x == "nan" else x)
     return merged_variants
 
 def create_format_fields(consensus_variants):
