@@ -2,6 +2,7 @@
 
 # Farnsworth
 ## A source agnostic, extendible, chock full of good news variant consensus caller!
+[![Build Status](https://travis-ci.com/medcelerate/Farnsworth.svg?branch=master)](https://travis-ci.com/medcelerate/Farnsworth)
 
 ### To Build Locally
 ```
