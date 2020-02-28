@@ -3,6 +3,4 @@ services:
     - docker
 
 script:
-    - docker build . -t medcelerate/farnswoth:$TRAVIS_COMMIT
-
-    57af3910-ee78-4671-91df-8e3380bde5aa
+    - docker build . -t medcelerate/farnsworth:$TRAVIS_COMMIT
