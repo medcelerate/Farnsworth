@@ -1,7 +1,11 @@
-language: python
+language: python:3.8
+env:
+    global:
+      secure: S7z/9mZwfC9/sGEAFMqucYYmddoxDUtSWJ21dGqdRbJlwptXCaTqU2hDO1KcxXPpKFjmVg/XNTfjM5GcLLFaioZLbH4uYhHETPHyP7s/ErRPj2ROnZlvyphklWClJjCCEIdTycPBWKWhdZE3B/5a91JA6SIMuDg6V2t+imk1Q3oOTRuPtoSxjsWLF2cPYSHGIUyk4P4R36W0t8GJcAMEF/IWPakMxKrfsl50Sbj0I66htaV2xZ4ZUn7nLyBq6XPcyAxZ2yT+c6zI4C1+PMZjwLtYVgnI2JftemZ4sPVsQKISJiMzaK0ObjuacCn0DzmoPv/WhAAmxg7L1haGjs7qWz84/PzU4DSy54w+FLXZ48/nybhwVfziZwJykN90Gf0kbYtMYy5P9PyrjunVarMuTsMVNLsx0EjPZkW2gJ+5itu6mn8B9mGRlwdie012EzCplhnxRmizno75rKkuh8GkjjMw91DvxK9wFq5NCMLXAusiKQLi/xj139i72HPZEk9EzMWqIYM22RDTl8VPQ7fDjCSMtHAKFz4l6NV5S9lBjOSCkVELKuTFiDcnAz+CAHIgdspOdFHS+Szp+2GjnxAfMMMbb6sVp/BkOhdL/tVck8yZ+h8bgLuDIcM3RjzGEBVniSKCJMFy5gz5F5n24sQCcV3vDS2WhEG72XSVRFeYa28=
+  
 services:
     - docker
-
 script:
-    - docker login -u
+    - docker login -u medcelerate -p $DOCKER_KEY
     - docker build . -t medcelerate/farnsworth:$TRAVIS_COMMIT
+    - docker push medcelerate/farnsworth:$TRAVIS_COMMIT
