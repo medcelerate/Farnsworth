@@ -196,8 +196,8 @@ def generate_headers(vcf_classes, consensus_variants):
         f"##fileformat=VCFv4.1",
         f"##fileDate={date}",
         f"##source=Farnsworth",
-        "##INFO=<ID=variantid,Number=1,Type=String,Description="">",
-        "##FILTER=<ID=PASS,Description="">"
+        '''##INFO=<ID=variantid,Number=1,Type=String,Description="Unique variant ID assigned by Farnsworth.">''',
+        '''##FILTER=<ID=PASS,Description="Pass filter.">'''
     ]
 
     contigs = list(map(lambda x: f"##contig=<ID={x},length={contigs[x]['length']}>", contigs))
