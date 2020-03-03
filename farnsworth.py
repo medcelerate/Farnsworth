@@ -13,7 +13,6 @@ from art import *
 from collections import deque
 from itertools import product
 
-import flamegraph
 
 def gen_art(key):
     if key == "f":
