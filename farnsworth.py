@@ -164,7 +164,9 @@ def call_consensus_variants(vcf_classes):
 def create_format_fields(consensus_variants):
     check_field = lambda x: "GT" in x or "DP" in x
     format_fields = filter(check_field, list(consensus_variants.columns))
-    format_fields = set(map(lambda x: x.split('_')[0], format_fields))
+    format_fields = list(set(map(lambda x: x.split('_')[0], format_fields)))
+    if "GT" in format_fields:
+        format_fields.insert(0, format_fields.pop(format_fields.index("GT")))
     return format_fields
 
 def generate_headers(vcf_classes, consensus_variants):
