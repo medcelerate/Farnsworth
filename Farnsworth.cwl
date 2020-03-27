@@ -3,7 +3,7 @@ class: CommandLineTool
 
 requirements:
   DockerRequirement:
-    dockerPull: "medcelerate/farnswoth:latest"
+    dockerPull: "medcelerate/farnsworth:latest"
 
 inputs:
   InputFiles:
