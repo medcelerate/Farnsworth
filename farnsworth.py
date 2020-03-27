@@ -91,7 +91,7 @@ def generate_vcf_classes(vcfs):
     print("Parsing VCFs")
     parsed_vcf_bodies = list(map(lambda x: allel.read_vcf(x, fields="*"), vcfs))
     parsed_vcf_bodies = list(filter(None, parsed_vcf_bodies))
-    deque(map(lambda x: x.update(samples=numpy.char.lower(x['samples'].tolist())), parsed_vcf_bodies))
+    deque(map(lambda x: x.update(samples=numpy.char.upper(x['samples'].tolist())), parsed_vcf_bodies))
     deque(map(lambda x,y: x.update(FILE=y), parsed_vcf_bodies, vcfs))
     add_headers = lambda x,y: x.update(header=allel.read_vcf_headers(y))
     deque(map(
