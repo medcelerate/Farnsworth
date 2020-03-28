@@ -276,6 +276,7 @@ def gen_regions(consensus_variants):
             chrom = row.CHROM
             if row.COUNT < df_length:
                 chr_line = f'{chrom}\t{start}\t{end}\n'
+                fp.write(chr_line)
             else:
                 chr_line = f'{chrom}\t{start}\t{end}'
                 fp.write(chr_line)
