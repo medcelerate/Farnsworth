@@ -150,6 +150,7 @@ def call_consensus_variants(vcf_classes):
                 merged_variants[col] =  merged_variants.groupby('variantid')[col].transform(lambda x: x.bfill())
                 continue
             merged_variants[col] =  merged_variants.groupby('variantid')[col].transform(lambda x: x.fillna(numpy.mean(x)))
+            merged_variants[col] =  merged_variants[col].astype(int)
         else:
             continue
     
@@ -241,7 +242,7 @@ def gen_vcf_writelist(call, format_fields, samples):
             if group[1] == "GT":
                 attr = fix_gt(getattr(call, ident))
             else:
-                attr = int(getattr(call, ident))
+                attr = str(getattr(call, ident))
             f.append(attr)
         record.append(":".join(f))
     return record
