@@ -150,7 +150,6 @@ def call_consensus_variants(vcf_classes):
                 merged_variants[col] =  merged_variants.groupby('variantid')[col].transform(lambda x: x.bfill())
                 continue
             merged_variants[col] =  merged_variants.groupby('variantid')[col].transform(lambda x: x.fillna(numpy.mean(x)))
-            merged_variants[col] =  merged_variants[col].astype(int)
         else:
             continue
     
@@ -158,6 +157,12 @@ def call_consensus_variants(vcf_classes):
     merged_variants = merged_variants.groupby('variantid').filter(lambda x: len(x) > 1)
 
     merged_variants['COUNT'] = numpy.arange(len(merged_variants))
+
+    for col in merged_variants.columns:
+        if "_" in col:
+            if "DP" in col:
+                 merged_variants[col] =  merged_variants[col].astype(int)
+                
 
     #merged_variants['QUAL'] = merged_variants['QUAL'].apply(lambda x: "." if x == "nan" else x)
     return merged_variants
