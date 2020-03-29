@@ -161,7 +161,7 @@ def call_consensus_variants(vcf_classes):
     for col in merged_variants.columns:
         if "_" in col:
             if "DP" in col:
-                 merged_variants[col] =  merged_variants[col].astype(int)
+                merged_variants[col] =  merged_variants[col].astype(int)
                 
 
     #merged_variants['QUAL'] = merged_variants['QUAL'].apply(lambda x: "." if x == "nan" else x)
