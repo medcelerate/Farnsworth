@@ -241,7 +241,7 @@ def gen_vcf_writelist(call, format_fields, samples):
             if group[1] == "GT":
                 attr = fix_gt(getattr(call, ident))
             else:
-                attr = str(getattr(call, ident))
+                attr = int(getattr(call, ident))
             f.append(attr)
         record.append(":".join(f))
     return record
