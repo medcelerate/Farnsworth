@@ -205,7 +205,7 @@ def generate_headers(vcf_classes, consensus_variants):
         f"##source=Farnsworth",
         '''##INFO=<ID=variantid,Number=1,Type=String,Description="Unique variant ID assigned by Farnsworth.">''',
         '''##FILTER=<ID=PASS,Description="Pass filter.">''',
-        '''##FORMAT=<ID=GT,Number=.,Type=String,Description="Genotype">''',
+        '''##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">''',
         '''##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">'''
     ]
 
