@@ -212,7 +212,7 @@ def generate_headers(vcf_classes, consensus_variants):
     contigs = list(map(lambda x: f"##contig=<ID={x},length={contigs[x]['length']}>", contigs))
 
     formats = create_format_fields(consensus_variants)
-    formats = list(map(lambda x: f"##FILTER=<ID={x},Number=1,Type=String,Description="">", formats))
+   # formats = list(map(lambda x: f"##FILTER=<ID={x},Number=1,Type=String,Description="">", formats))
 
 
     return top_lines + formats + contigs
