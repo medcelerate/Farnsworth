@@ -24,7 +24,7 @@ inputs:
       prefix: "--output"
       valueFrom: "consensus.vcf"
 
-baseCommand: ["Farnsworth"]
+baseCommand: ["/bin/Farnsworth"]
 
 outputs:
   consensus_vcf:
