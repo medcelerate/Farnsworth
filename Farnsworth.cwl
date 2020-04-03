@@ -3,7 +3,7 @@ class: CommandLineTool
 
 requirements:
   DockerRequirement:
-    dockerPull: "medcelerate/farnswoth:latest"
+    dockerPull: "medcelerate/farnswoth:MMRF"
   InlineJavascriptRequirement: {}
 
 inputs:
