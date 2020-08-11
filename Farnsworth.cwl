@@ -6,6 +6,7 @@ requirements:
     dockerPull: "medcelerate/farnsworth:latest"
   InlineJavascriptRequirement: {}
 
+
 inputs:
   InputFiles:
     type: File[]
