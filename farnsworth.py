@@ -91,7 +91,7 @@ def generate_vcf_classes(vcfs):
     print("Parsing VCFs")
     parsed_vcf_bodies = list(map(lambda x: allel.read_vcf(x, fields="*"), vcfs))
     parsed_vcf_bodies = list(filter(None, parsed_vcf_bodies))
-    deque(map(lambda x: x.update(samples=numpy.char.lower(x['samples'].tolist())), parsed_vcf_bodies))
+    deque(map(lambda x: x.update(samples=numpy.char.upper(x['samples'].tolist())), parsed_vcf_bodies))
     deque(map(lambda x,y: x.update(FILE=y), parsed_vcf_bodies, vcfs))
     add_headers = lambda x,y: x.update(header=allel.read_vcf_headers(y))
     deque(map(
@@ -158,6 +158,12 @@ def call_consensus_variants(vcf_classes):
 
     merged_variants['COUNT'] = numpy.arange(len(merged_variants))
 
+    for col in merged_variants.columns:
+        if "_" in col:
+            if "DP" in col:
+                merged_variants[col] =  merged_variants[col].astype(int)
+                
+
     #merged_variants['QUAL'] = merged_variants['QUAL'].apply(lambda x: "." if x == "nan" else x)
     return merged_variants
 
@@ -205,11 +211,11 @@ def generate_headers(vcf_classes, consensus_variants):
 
     contigs = list(map(lambda x: f"##contig=<ID={x},length={contigs[x]['length']}>", contigs))
 
-    formats = create_format_fields(consensus_variants)
-    formats = list(map(lambda x: f"##FILTER=<ID={x},Number=1,Type=String,Description="">", formats))
+    #formats = create_format_fields(consensus_variants)
+    #formats = list(map(lambda x: f"##FILTER=<ID={x},Number=1,Type=String,Description="">", formats))
 
 
-    return top_lines + formats + contigs
+    return top_lines + contigs
 
 def gen_vcf_writelist(call, format_fields, samples):
 

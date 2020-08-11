@@ -4,6 +4,8 @@ class: CommandLineTool
 requirements:
   DockerRequirement:
     dockerPull: "medcelerate/farnsworth:latest"
+  InlineJavascriptRequirement: {}
+
 
 inputs:
   InputFiles:
@@ -23,7 +25,7 @@ inputs:
       prefix: "--output"
       valueFrom: "consensus.vcf"
 
-baseCommand: ["Farnsworth"]
+baseCommand: ["/bin/Farnsworth"]
 
 outputs:
   consensus_vcf:
